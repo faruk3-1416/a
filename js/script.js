@@ -20,4 +20,3 @@ console.log(b);
 var a = 50
 console.log(a);
 console.log(b);
-hi dosto
