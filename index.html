@@ -1,36 +1,2475 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Course Tracker</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Basic Reset & Variables */
+        :root {
+            --primary-bg: #f8f9fa;
+            --secondary-bg: #ffffff;
+            --text-color: #343a40;
+            --light-text-color: #6c757d;
+            --border-color: #dee2e6;
+            --accent-color: #007bff;
+            --accent-hover: #0056b3;
+            --progress-bar-bg: #e9ecef;
+            --progress-fill: #28a745;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --udemy-blue: #5624d0;
+            --udemy-blue-darker: #421e9e;
+            --note-bg: #fff3cd;
+            --note-border: #ffeeba;
+            --note-text: #856404;
+            --sidebar-width-desktop: 300px; /* Default desktop sidebar width */
+            --sidebar-min-width: 250px;
+            --sidebar-closed-width: 0px; /* Fully collapsed width */
+            --resizer-width: 8px; /* Vertical sidebar resizer */
+            --horizontal-resizer-height: 8px; /* Horizontal main content resizer (not used in this layout for video/notes) */
+            --right-content-width-desktop: 350px; /* Default right course content panel width */
+            --right-content-min-width: 280px;
+        }
 
-  <title>HTML</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="js/script.js"></script>
+        /* Dark Mode Variables */
+        body.dark-mode {
+            --primary-bg: #1a202c;
+            --secondary-bg: #2d3748;
+            --text-color: #e2e8f0;
+            --light-text-color: #a0aec0;
+            --border-color: #4a5568;
+            --accent-color: #63b3ed;
+            --accent-hover: #4299e1;
+            --progress-bar-bg: #4a5568;
+            --progress-fill: #48bb78;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --udemy-blue: #63b3ed;
+            --udemy-blue-darker: #4299e1;
+            --note-bg: #4a5568;
+            --note-border: #63b3ed;
+            --note-text: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            overflow: hidden; /* Prevent body scroll, let inner containers scroll */
+        }
+
+        /* Utility Classes */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .justify-between { justify-content: space-between; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .p-4 { padding: 1rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .shadow-md { box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -1px var(--shadow-color); }
+        .text-sm { font-size: 0.875rem; }
+        .text-md { font-size: 1rem; }
+        .text-lg { font-size: 1.125rem; }
+        .font-semibold { font-weight: 600; }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .cursor-pointer { cursor: pointer; }
+        .hover-bg-light:hover { background-color: rgba(0, 0, 0, 0.05); }
+        .hover-bg-light.dark-mode:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+        /* App Container for Sidebar + Main Content */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative; /* For floating elements */
+        }
+
+        /* Sidebar Styles (Left Panel: Courses) */
+        .sidebar {
+            width: var(--sidebar-width-desktop);
+            background-color: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px var(--shadow-color);
+            flex-shrink: 0;
+            transition: width 0.5s ease-in-out, transform 0.3s ease-in-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+
+        /* Collapsed Sidebar State */
+        .sidebar.collapsed {
+            width: var(--sidebar-closed-width);
+            padding-left: 0;
+            padding-right: 0;
+            overflow: hidden;
+            border-right: none;
+            box-shadow: none;
+        }
+
+        /* Hide elements within collapsed sidebar */
+        .sidebar.collapsed > *:not(.sidebar-header) {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-header {
+            width: fit-content; /* Only button and title show */
+        }
 
 
+        .sidebar-header {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap; /* Allow wrapping for small screens */
+            gap: 0.5rem;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            color: var(--udemy-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sidebar.collapsed .sidebar-header h2 {
+             display: none; /* Hide title when collapsed */
+        }
 
 
-  <style>
-    #welcome{
-      color: red;
-    }
-    h1:hover{
-      color: blue;
-      font-size: medium;
-    }
-  </style>
+        .sidebar-header button {
+            background-color: var(--udemy-blue);
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-header button:hover {
+            background-color: var(--udemy-blue-darker);
+            transform: translateY(-1px);
+        }
+
+        .sidebar-header button:active {
+            transform: translateY(0);
+        }
+
+        .sidebar-toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: color 0.2s, background-color 0.2s;
+            margin-right: 1rem; /* Space between toggle and title */
+            display: flex; /* Ensure flex for consistent icon centering */
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-toggle-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        body.dark-mode .sidebar-toggle-btn:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .course-list {
+            flex-grow: 1;
+        }
+
+        .course-item {
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .course-item:hover {
+            background-color: var(--primary-bg);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-color);
+        }
+
+        .course-item.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            box-shadow: none; /* Remove shadow when active */
+        }
+
+        .course-item.active .course-name,
+        .course-item.active .course-progress-text {
+            color: white;
+        }
+
+        .course-item.active .progress-bar-bg {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .course-item.active .progress-fill {
+            background-color: white;
+        }
+
+
+        .course-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-color); /* Default color */
+            word-break: break-word; /* Prevent long names from breaking layout */
+        }
+
+        .course-progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: var(--progress-bar-bg);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--progress-fill);
+            border-radius: 3px;
+            transition: width 0.3s ease-in-out;
+        }
+
+        .course-progress-text {
+            font-size: 0.8rem;
+            color: var(--light-text-color);
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+
+        /* Sidebar Resizer */
+        .sidebar-resizer {
+            width: var(--resizer-width);
+            cursor: ew-resize;
+            background-color: var(--border-color); /* Subtle indicator */
+            transition: background-color 0.2s ease-in-out;
+            flex-shrink: 0;
+            z-index: 10; /* Ensure it's above other content */
+        }
+        .sidebar-resizer:hover {
+            background-color: var(--accent-color);
+        }
+        /* Resizer should be visible even when sidebar is very narrow, but not fully collapsed by button */
+        .sidebar.collapsed + .sidebar-resizer {
+            display: none; /* Hide resizer only when sidebar is fully collapsed by toggle button */
+        }
+
+
+        /* Main Content Area (Video + Notes + Right Content) */
+        .main-content-wrapper {
+            flex-grow: 1; /* Takes all remaining width */
+            display: flex;
+            flex-direction: row; /* Main layout for Video/Notes (left) and Course Content (right) */
+            overflow: hidden; /* Control internal scrolling */
+            position: relative; /* For loader or specific positioning */
+        }
+
+        /* Left Section of Main Content (Video + Notes) */
+        .video-notes-section {
+            flex-grow: 1; /* Takes remaining space within main-content-wrapper */
+            display: flex;
+            flex-direction: column; /* Stack video and notes vertically */
+            overflow-y: auto; /* Allow scrolling for this section */
+            padding: 1.5rem; /* Padding for video and notes */
+        }
+
+        /* Resizer between Video/Notes and Right Content */
+        .vertical-content-resizer {
+            width: var(--resizer-width);
+            cursor: ew-resize;
+            background-color: var(--border-color);
+            transition: background-color 0.2s ease-in-out;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .vertical-content-resizer:hover {
+            background-color: var(--accent-color);
+        }
+
+        /* Right Section of Main Content (Course Sections/Videos) */
+        .right-content-panel {
+            width: var(--right-content-width-desktop); /* Default width */
+            background-color: var(--secondary-bg); /* Now a distinct background */
+            border-left: 1px solid var(--border-color); /* Re-added border-left */
+            box-shadow: -2px 0 5px var(--shadow-color); /* Re-added box-shadow */
+            flex-shrink: 0; /* Prevent shrinking below its width */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Allow scrolling within sections/videos */
+            padding: 1.5rem; /* Original padding */
+            transition: width 0.5s ease-in-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Smooth transition */
+        }
+
+
+        .welcome-message {
+            text-align: center;
+            margin-top: 5rem;
+            font-size: 1.2rem;
+            color: var(--light-text-color);
+            width: 100%; /* Ensure it spans the full width when no course is selected */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 2rem;
+            background-color: var(--secondary-bg);
+            border-radius: 0.5rem;
+        }
+
+        .course-title-main {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--udemy-blue);
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-list {
+            margin-bottom: 2rem;
+            flex-grow: 1; /* Allow sections list to grow in height */
+        }
+
+        .section-item {
+            background-color: transparent; /* Changed to transparent for Udemy-like look */
+            border: none; /* Removed border */
+            border-radius: 0; /* Removed border-radius */
+            margin-bottom: 0; /* No margin-bottom for a tighter list */
+            overflow: hidden;
+            box-shadow: none; /* Removed shadow */
+            transition: background-color 0.3s; /* Only transition background for hover */
+        }
+
+        .section-item:hover {
+            background-color: rgba(0, 123, 255, 0.05); /* Subtle hover background */
+        }
+        body.dark-mode .section-item:hover {
+            background-color: rgba(99, 179, 237, 0.05);
+        }
+
+
+        .section-header {
+            background-color: transparent; /* Blend with parent */
+            padding: 1rem 0; /* Vertical padding, no horizontal for section header */
+            font-weight: 700; /* Bolder font weight */
+            font-size: 1.05rem; /* Adjusted font size for section headers */
+            border-bottom: 1px solid var(--border-color); /* Keep bottom border */
+            margin-top: 0.5rem; /* Space between sections */
+            cursor: pointer; /* Make section header clickable */
+            display: flex; /* Flex to align title and content */
+            flex-direction: column; /* Stack title and info vertically */
+            align-items: flex-start; /* Align stacked items to left */
+        }
+
+        .section-header:first-child {
+             margin-top: 0; /* No top margin for the very first section */
+        }
+
+        .section-header .section-title-wrapper { /* New wrapper for folder icon and title */
+            display: flex;
+            align-items: center;
+            flex-grow: 1; /* Allow section title to take available space */
+            word-break: break-word; /* Ensure long words break for section titles */
+            gap: 0.5rem; /* Gap between folder icon and text */
+            width: 100%; /* Ensure it takes full width for collapsing icon */
+            justify-content: space-between; /* Space out title and right-aligned arrow if it existed */
+        }
+        .section-header .section-title-wrapper span {
+            flex-grow: 1; /* Allow title text to grow */
+        }
+
+
+        .section-header .folder-toggle-icon { /* New class for folder icon */
+            transition: transform 0.3s ease; /* Animation for folder icon */
+        }
+
+        .section-header.collapsed .folder-toggle-icon {
+            transform: rotate(-90deg); /* Rotate folder icon when collapsed */
+        }
+
+        .section-header .section-info { /* Style for video count and duration */
+            font-size: 0.85rem;
+            color: var(--light-text-color);
+            margin-top: 0.5rem; /* Space below title */
+            padding-left: 1.5rem; /* Indent to align with text, considering folder icon */
+            width: 100%; /* Ensure it spans the full width below the title */
+            line-height: 1.2; /* Tighter line height for info */
+        }
+
+        .video-list {
+            /* Keep default display for toggling, controlled by JS class `expanded` */
+            padding: 0.5rem 0; /* Padding around the video items list */
+        }
+
+        .video-list:not(.expanded) { /* Explicitly hide when not expanded */
+            display: none;
+        }
+
+        .video-item {
+            display: flex;
+            align-items: flex-start; /* Align checkbox/icon with top of wrapped title */
+            padding: 0.75rem 0; /* Adjusted padding, no horizontal for video item */
+            border-bottom: none; /* Removed border */
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+            gap: 0.75rem; /* Gap for spacing elements */
+        }
+        .video-item:hover {
+            background-color: rgba(0, 123, 255, 0.05); /* Subtle hover background */
+        }
+        body.dark-mode .video-item:hover {
+            background-color: rgba(99, 179, 237, 0.05);
+        }
+
+        .video-item:last-child {
+            border-bottom: none;
+        }
+
+        .video-item.playing {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .video-item.playing .video-title,
+        .video-item.playing .video-duration,
+        .video-item.playing .video-icon {
+            color: white;
+        }
+
+        .video-checkbox-container {
+            flex-shrink: 0;
+            /* margin-right: 0.75rem; */ /* Handled by gap on .video-item */
+            padding-top: 0.15rem; /* Visual alignment for wrapped text */
+        }
+
+        .video-checkbox {
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 0.25rem;
+            border: 1px solid var(--border-color);
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white; /* For checkmark */
+        }
+
+        .video-checkbox:checked {
+            background-color: var(--progress-fill);
+            border-color: var(--progress-fill);
+        }
+
+        .video-checkbox:checked::before {
+            content: "\f00c"; /* Font Awesome check icon */
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 0.8rem;
+            display: block;
+        }
+
+        .video-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column; /* Stack title and playback info */
+            align-items: flex-start; /* Align stacked items to left */
+        }
+
+        .video-title {
+            flex-grow: 1;
+            white-space: normal; /* Allows Wrapping */
+            overflow: visible; /* Allows Content to be Visible */
+            text-overflow: clip; /* Prevents Ellipsis */
+            color: var(--text-color);
+            font-size: 0.875rem; /* Smaller font size */
+            margin-bottom: 0.2rem; /* Small space between title and playback info */
+        }
+
+        .video-playback-info { /* New wrapper for icon and duration */
+            display: flex;
+            align-items: center;
+            gap: 0.4rem; /* Smaller gap between icon and duration text */
+            font-size: 0.75rem; /* Smaller font for duration */
+            color: var(--light-text-color);
+        }
+        .video-playback-info .video-icon { /* Specific style for icon inside playback info */
+            margin-right: 0; /* Remove previous margin */
+            font-size: 0.8rem; /* Adjusted icon size */
+            color: inherit; /* Inherit color from parent (.video-playback-info) */
+        }
+
+        .video-duration {
+            flex-shrink: 0;
+            margin-left: 0; /* Align under title */
+        }
+
+        /* Video Player Section - Aspect Ratio Handling */
+        .video-player-container {
+            position: relative; /* Needed for absolute positioning of aspect-ratio-box */
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio (height/width * 100%) */
+            background-color: black;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            display: flex; /* For loader centering, but child video is absolute */
+            justify-content: center;
+            align-items: center;
+        }
+
+        #videoPlayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain; /* Ensures video scales within container without cropping, adding letterboxing/pillarboxing if needed */
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid var(--accent-color); /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            z-index: 10;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Notes Panel */
+        .notes-panel {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .notes-panel h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            color: var(--udemy-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .note-input-area {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        #noteContent {
+            width: 100%;
+            min-height: 100px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            resize: vertical;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        #noteContent:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .note-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+        }
+
+        .note-buttons button {
+            background-color: var(--udemy-blue);
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .note-buttons button:hover {
+            background-color: var(--udemy-blue-darker);
+        }
+
+        .notes-list {
+            margin-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+
+        .note-item {
+            background-color: var(--note-bg);
+            border: 1px solid var(--note-border);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .note-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            color: var(--note-text);
+            font-size: 0.9rem;
+        }
+
+        .note-timestamp {
+            font-weight: 600;
+            color: var(--udemy-blue);
+            cursor: pointer;
+        }
+
+        .note-timestamp:hover {
+            text-decoration: underline;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .note-actions button {
+            background: none;
+            border: none;
+            color: var(--light-text-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: color 0.2s;
+        }
+
+        .note-actions button:hover {
+            color: var(--accent-color);
+        }
+
+        .note-content {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-color);
+        }
+
+        /* Mode Toggle */
+        .mode-toggle {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px var(--shadow-color);
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+            z-index: 100;
+        }
+
+        .mode-toggle i {
+            font-size: 1.4rem;
+            color: var(--text-color);
+            transition: color 0.3s;
+        }
+
+        /* Sidebar Re-open Button (when hidden by drag or toggle on desktop) */
+        .sidebar-reopen-btn {
+            position: fixed;
+            top: 1.5rem; /* Closer to top-left */
+            left: 0;
+            background-color: var(--udemy-blue);
+            color: white;
+            border: none;
+            border-radius: 0 0.5rem 0.5rem 0;
+            padding: 0.75rem 0.75rem; /* More balanced padding for a square look */
+            cursor: pointer;
+            box-shadow: 2px 0 5px var(--shadow-color);
+            display: none; /* Hidden by default */
+            font-size: 1.2rem; /* Keep icon size */
+            z-index: 99;
+            transition: background-color 0.2s ease-in-out, opacity 0.3s ease-in-out; /* Add opacity transition */
+            opacity: 0; /* Start hidden for opacity transition */
+        }
+        .sidebar-reopen-btn:hover {
+            background-color: var(--udemy-blue-darker);
+        }
+        .sidebar-reopen-btn.show {
+            display: block;
+            opacity: 1; /* Fade in */
+        }
+
+        /* Fullscreen Video Mode */
+        body.fullscreen-video .sidebar,
+        body.fullscreen-video .sidebar-resizer,
+        body.fullscreen-video .mode-toggle,
+        body.fullscreen-video .sidebar-reopen-btn,
+        body.fullscreen-video .vertical-content-resizer,
+        body.fullscreen-video .right-content-panel {
+            display: none !important; /* Hide sidebar, resizers, and right panel in fullscreen */
+        }
+
+
+        /* Responsive Design */
+        @media (max-width: 900px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed; /* Overlay mode */
+                top: 0;
+                left: 0;
+                width: 280px; /* Fixed width for overlay */
+                height: 100%;
+                box-shadow: 4px 0 10px var(--shadow-color);
+                z-index: 200; /* Above main content */
+                transform: translateX(-100%); /* Initially hidden */
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+
+            .sidebar.active { /* Use 'active' for overlay shown state */
+                transform: translateX(0); /* Slide in */
+            }
+
+            .sidebar.collapsed { /* For overlay mode, 'collapsed' means hidden but ready to show */
+                width: 280px; /* Maintain width for slide effect */
+                transform: translateX(-100%);
+            }
+            .sidebar.collapsed > *:not(.sidebar-header) {
+                display: block; /* Content should be visible when it slides in */
+            }
+            .sidebar.collapsed .sidebar-header h2 {
+                display: flex; /* Show title in overlay mode */
+            }
+
+
+            .sidebar-resizer {
+                display: none; /* No resizer in overlay mode */
+            }
+
+            /* Main Content in Mobile: Stack Vertically */
+            .main-content-wrapper {
+                flex-direction: column; /* Stack video/notes and right content panels */
+                overflow-y: auto; /* Allow scrolling for combined content */
+            }
+
+            .video-notes-section {
+                width: 100%; /* Full width */
+                height: auto;
+                padding: 1rem;
+                border-right: none; /* Remove desktop border */
+                border-bottom: 1px solid var(--border-color); /* Add bottom border */
+                box-shadow: 0 2px 4px var(--shadow-color);
+                flex-shrink: 0;
+            }
+
+            .vertical-content-resizer {
+                display: none; /* Hide horizontal resizer on mobile */
+            }
+
+            .right-content-panel {
+                width: 100%; /* Full width */
+                height: auto;
+                padding: 1rem;
+                border-left: none; /* Remove desktop border */
+                box-shadow: none; /* Remove desktop shadow */
+            }
+
+            .mode-toggle {
+                bottom: 1rem;
+                right: 1rem;
+                width: 45px;
+                height: 45px;
+            }
+
+            .mode-toggle i {
+                font-size: 1.2rem;
+            }
+
+            /* Overlay background when sidebar is active */
+            .sidebar-overlay-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 150;
+                display: none; /* Hidden by default */
+            }
+            .sidebar.active + .sidebar-resizer + .main-content-wrapper + .sidebar-overlay-backdrop {
+                display: block;
+            }
+             .sidebar-reopen-btn {
+                display: none !important; /* Hide this on smaller screens, as toggle button is primary */
+            }
+        }
+
+        @media (max-width: 600px) {
+            .sidebar-header h2 {
+                font-size: 1.2rem;
+            }
+
+            .sidebar-header button {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.8rem;
+            }
+
+            .course-item {
+                padding: 0.75rem;
+            }
+
+            .course-name {
+                font-size: 0.9rem;
+            }
+
+            .course-progress-text {
+                font-size: 0.75rem;
+            }
+
+            .course-title-main {
+                font-size: 1.5rem;
+            }
+
+            .video-item {
+                padding: 0.6rem 1rem;
+                flex-wrap: wrap; /* Allow video title and duration to wrap */
+            }
+
+            .video-checkbox-container {
+                margin-right: 0.5rem;
+                margin-bottom: 0.5rem; /* Add space when wrapping */
+            }
+
+            .video-details {
+                width: 100%; /* Take full width when wrapping */
+            }
+
+            .video-icon {
+                margin-right: 0.5rem;
+            }
+
+            .video-title {
+                font-size: 0.9rem;
+            }
+
+            .video-duration {
+                margin-left: auto; /* Push duration to the right */
+            }
+
+            .notes-panel h3 {
+                font-size: 1.1rem;
+            }
+
+            .note-input-area button {
+                font-size: 0.8rem;
+                padding: 0.5rem 0.8rem;
+            }
+
+            .note-item {
+                padding: 0.6rem 0.8rem;
+            }
+
+            .message-box {
+                padding: 1.5rem;
+            }
+
+            .message-box button {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
-
 <body>
-  <h1 id="welcome"> welcome to Faruk's Website</h1>
-  <h1>lkaj</h1>
-  <h1>lakjd</h1>
-  <h1>lakdsj</h1>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button id="sidebarToggleBtn" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2><i class="fas fa-book-open"></i> My Courses</h2>
+                <button id="addCourseBtn"><i class="fas fa-folder-plus"></i> Add Course</button>
+            </div>
+            <div id="courseList" class="course-list">
+                <!-- Courses will be loaded here -->
+                <p class="text-sm light-text-color">Click "Add Course" to select your course folders.</p>
+            </div>
+        </aside>
+
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
+
+        <main class="main-content-wrapper">
+            <div id="welcomeMessage" class="welcome-message">
+                <p>Welcome! Select a course from the left sidebar or add a new one to get started.</p>
+                <p><i class="fas fa-video"></i></p>
+            </div>
+
+            <div id="courseDetails" style="display: none; flex-grow: 1; display: flex; flex-direction: row;">
+                <!-- Left Section: Video Player & Notes -->
+                <div class="video-notes-section">
+                    <h2 id="currentCourseTitle" class="course-title-main"></h2>
+
+                    <div class="video-player-container">
+                        <div id="videoPlayerLoader" class="loader" style="display: none;"></div>
+                        <video id="videoPlayer" controls autoplay></video>
+                    </div>
+
+                    <div class="notes-panel">
+                        <h3><i class="fas fa-clipboard"></i> Notes for Current Video</h3>
+                        <div class="note-input-area">
+                            <textarea id="noteContent" placeholder="Write your notes here... (Supports Markdown)"></textarea>
+                            <div class="note-buttons">
+                                <button id="saveNoteBtn"><i class="fas fa-save"></i> Save Note</button>
+                                <button id="addTimestampBtn"><i class="fas fa-clock"></i> Add Timestamp</button>
+                                <button id="summarizeVideoBtn"><i class="fas fa-magic"></i> Summarize Notes ✨</button>
+                                <button id="generateQuestionsBtn"><i class="fas fa-question-circle"></i> Generate Study Questions ✨</button>
+                            </div>
+                        </div>
+                        <div id="notesList" class="notes-list">
+                            <!-- Notes will be loaded here -->
+                            <p class="text-sm light-text-color">No notes yet for this video. Start typing above!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vertical-content-resizer" id="verticalContentResizer"></div>
+
+                <!-- Right Section: Course Sections / Video List -->
+                <div class="right-content-panel">
+                    <div id="sectionsList" class="section-list">
+                        <!-- Sections and videos will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+        <div class="sidebar-overlay-backdrop"></div>
+    </div>
+
+    <button id="sidebarReopenBtn" class="sidebar-reopen-btn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div id="modeToggle" class="mode-toggle">
+        <i class="fas fa-moon"></i>
+    </div >
+
+    <!-- Message Box Template -->
+    <template id="messageBoxTemplate">
+        <div class="message-box-overlay">
+            <div class="message-box rounded-lg">
+                <h4 id="messageBoxTitle"></h4>
+                <p id="messageBoxContent"></p>
+                <button id="messageBoxOkBtn">OK</button>
+            </div>
+        </dialog>
+    </template>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>
+    <script>
+        // IndexedDB database setup
+        const DB_NAME = 'CourseTrackerDB';
+        const DB_VERSION = 1;
+        let db;
+
+        // UI Elements
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebarResizer = document.getElementById('sidebarResizer');
+        const sidebarReopenBtn = document.getElementById('sidebarReopenBtn');
+        const sidebarOverlayBackdrop = document.querySelector('.sidebar-overlay-backdrop');
+        const mainContentWrapper = document.querySelector('.main-content-wrapper'); // Changed from mainContent
+        const videoNotesSection = document.querySelector('.video-notes-section');
+        const verticalContentResizer = document.getElementById('verticalContentResizer');
+        const rightContentPanel = document.querySelector('.right-content-panel');
+
+        const addCourseBtn = document.getElementById('addCourseBtn');
+        const courseListDiv = document.getElementById('courseList');
+        const welcomeMessageDiv = document.getElementById('welcomeMessage');
+        const courseDetailsDiv = document.getElementById('courseDetails');
+        const currentCourseTitle = document.getElementById('currentCourseTitle');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoPlayerLoader = document.getElementById('videoPlayerLoader');
+        const sectionsListDiv = document.getElementById('sectionsList');
+        const noteContentInput = document.getElementById('noteContent');
+        const saveNoteBtn = document.getElementById('saveNoteBtn');
+        const addTimestampBtn = document.getElementById('addTimestampBtn');
+        const notesListDiv = document.getElementById('notesList');
+        const summarizeVideoBtn = document.getElementById('summarizeVideoBtn'); // New button
+        const generateQuestionsBtn = document.getElementById('generateQuestionsBtn'); // New button
+        const modeToggle = document.getElementById('modeToggle');
+        const messageBoxTemplate = document.getElementById('messageBoxTemplate');
+
+        // Global state variables
+        let currentCourseId = null;
+        let currentVideoPath = null;
+        let currentVideoFileHandle = null;
+        let objectUrl = null; // To store URL.createObjectURL reference for cleanup
+
+        // Sidebar state variables
+        let isSidebarCollapsed = false;
+        let isResizingSidebar = false;
+        let initialSidebarWidth;
+        let initialSidebarMouseX;
+
+        // Vertical content panel state variables
+        let isResizingVerticalContent = false;
+        let initialRightContentWidth;
+        let initialVerticalContentMouseX;
+
+        const MIN_SIDEBAR_WIDTH_DRAG = 50; // Minimum resizable width for the sidebar
+        const MEDIA_QUERY_BREAKPOINT = 900; // px
+        let isMobileView = window.innerWidth <= MEDIA_QUERY_BREAKPOINT;
+        const MIN_RIGHT_CONTENT_WIDTH_DRAG = 100; // Minimum resizable width for the right content panel
 
 
+        // --- IndexedDB Functions ---
 
+        /**
+         * Initializes the IndexedDB database.
+         * Creates object stores if they don't exist.
+         */
+        function initDb() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains('courses')) {
+                        const courseStore = db.createObjectStore('courses', { keyPath: 'id' });
+                        courseStore.createIndex('name', 'name', { unique: true });
+                        console.log('IndexedDB: courses object store created.');
+                    }
+                    if (!db.objectStoreNames.contains('videos')) {
+                        const videoStore = db.createObjectStore('videos', { keyPath: 'path' });
+                        videoStore.createIndex('courseId', 'courseId', { unique: false });
+                        console.log('IndexedDB: videos object store created.');
+                    }
+                    if (!db.objectStoreNames.contains('notes')) {
+                        const noteStore = db.createObjectStore('notes', { keyPath: 'id', autoIncrement: true });
+                        noteStore.createIndex('videoId', 'videoId', { unique: false });
+                        console.log('IndexedDB: notes object store created.');
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB initialized successfully.');
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('IndexedDB error:', event.target.error);
+                    showMessageBox('Database Error', 'Failed to open IndexedDB. Some features may not work.');
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Adds or updates a course in IndexedDB.
+         * @param {object} courseData - The course data to store.
+         */
+        function putCourse(courseData) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['courses'], 'readwrite');
+                const store = transaction.objectStore('courses');
+                const request = store.put(courseData);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves all courses from IndexedDB.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of course objects.
+         */
+        function getAllCourses() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['courses'], 'readonly');
+                const store = transaction.objectStore('courses');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Adds or updates a video in IndexedDB.
+         * @param {object} videoData - The video data to store.
+         */
+        function putVideo(videoData) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['videos'], 'readwrite');
+                const store = transaction.objectStore('videos');
+                const request = store.put(videoData);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves videos for a specific course from IndexedDB.
+         * @param {string} courseId - The ID of the course.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of video objects.
+         */
+        function getVideosByCourseId(courseId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['videos'], 'readonly');
+                const store = transaction.objectStore('videos');
+                const index = store.index('courseId');
+                const request = index.getAll(courseId);
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves a single video by its path from IndexedDB.
+         * @param {string} videoPath - The unique path of the video.
+         * @returns {Promise<object|undefined>} A promise that resolves with the video object or undefined.
+         */
+        function getVideoByPath(videoPath) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['videos'], 'readonly');
+                const store = transaction.objectStore('videos');
+                const request = store.get(videoPath);
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Adds a note to IndexedDB.
+         * @param {object} noteData - The note data to store.
+         */
+        function addNote(noteData) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['notes'], 'readwrite');
+                const store = transaction.objectStore('notes');
+                const request = store.add(noteData);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves notes for a specific video from IndexedDB.
+         * @param {string} videoId - The ID/path of the video.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of note objects.
+         */
+        function getNotesByVideoId(videoId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['notes'], 'readonly');
+                const store = transaction.objectStore('notes');
+                const index = store.index('videoId');
+                const request = index.getAll(videoId);
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Deletes a note by its ID from IndexedDB.
+         * @param {number} noteId - The ID of the note to delete.
+         */
+        function deleteNote(noteId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['notes'], 'readwrite');
+                const store = transaction.objectStore('notes');
+                const request = store.delete(noteId);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        // --- File System Access API Functions ---
+
+        /**
+         * Prompts the user to select a directory and processes its contents as a course.
+         */
+        async function selectCourseFolder() {
+            if (!window.showDirectoryPicker) {
+                showMessageBox('Browser Support Required', 'Your browser does not fully support the File System Access API, or this application is running in an environment (like an iframe) that restricts it. Please ensure you are using a modern browser (Chrome, Edge) and open the HTML file directly in a new tab for full functionality.');
+                return;
+            }
+
+            try {
+                const directoryHandle = await window.showDirectoryPicker({ mode: 'read' });
+                const courseName = directoryHandle.name;
+                const courseId = `course-${directoryHandle.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`; // Unique ID
+
+                // Check if a course with the same name already exists
+                const existingCourses = await getAllCourses();
+                if (existingCourses.some(c => c.name === courseName)) {
+                    showMessageBox('Course Exists', `A course named "${courseName}" already exists. Please choose a different folder or rename it.`);
+                    return;
+                }
+
+                showMessageBox('Processing Course', `Scanning "${courseName}" for videos... This might take a moment.`, true);
+
+                const courseVideos = await readDirectoryContents(directoryHandle, courseId, '');
+
+                if (courseVideos.length === 0) {
+                    showMessageBox('No Videos Found', `No compatible video files (.mp4, .mkv) were found in "${courseName}". Please select a folder with videos.`);
+                    return;
+                }
+
+                // Store the handle reference (for persistence across sessions)
+                // Note: FileSystemHandle objects themselves are serializable to IndexedDB
+                // and can be retrieved later. Permissions might need re-prompting depending on browser.
+                const courseData = {
+                    id: courseId,
+                    name: courseName,
+                    handle: directoryHandle, // Store the handle directly
+                    videoPaths: courseVideos.map(v => v.path) // Store relative paths
+                };
+                await putCourse(courseData);
+
+                for (const video of courseVideos) {
+                    await putVideo(video);
+                }
+
+                console.log(`Course "${courseName}" added with ${courseVideos.length} videos.`);
+                showMessageBox('Course Added', `"${courseName}" has been added with ${courseVideos.length} videos.`, false);
+                await renderCourseList(); // Refresh sidebar
+
+                // Automatically select the newly added course
+                await selectCourse(courseId);
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('User cancelled folder selection.');
+                } else if (error.name === 'NotAllowedError') {
+                    showMessageBox('Permission Denied', 'Permission to access the selected folder was denied by the user.');
+                } else if (error.name === 'SecurityError' && error.message.includes('Cross origin sub frames')) {
+                    showMessageBox('Environment Limitation', 'This application cannot access local folders when running inside a cross-origin iframe (like this preview). Please save the HTML file and open it directly in your browser tab to use this feature.');
+                }
+                else {
+                    console.error('Error selecting folder:', error);
+                    showMessageBox('Error', `Failed to add course: ${error.message}. Please try again or open directly in your browser.`);
+                }
+            } finally {
+                hideMessageBox(); // Ensure message box is hidden after processing
+            }
+        }
+
+        /**
+         * Recursively reads directory contents and identifies video files.
+         * @param {FileSystemDirectoryHandle} handle - The directory handle.
+         * @param {string} courseId - The ID of the parent course.
+         * @param {string} currentPath - The relative path from the course root.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of video metadata.
+         */
+        async function readDirectoryContents(handle, courseId, currentPath) {
+            const videos = [];
+            for await (const entry of handle.values()) {
+                const fullPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+
+                if (entry.kind === 'file') {
+                    if (entry.name.endsWith('.mp4') || entry.name.endsWith('.mkv')) {
+                        const file = await entry.getFile();
+                        // For local files, getting duration without loading is tricky.
+                        // We'll load it into a temp video element to get metadata.
+                        let duration = 0;
+                        try {
+                            duration = await getVideoDuration(file);
+                        } catch (e) {
+                            console.warn(`Could not get duration for ${file.name}:`, e);
+                        }
+
+                        videos.push({
+                            courseId: courseId,
+                            path: fullPath, // Unique path identifier for video
+                            name: file.name,
+                            section: currentPath || 'Main Section', // Use subfolder name as section
+                            duration: duration,
+                            lastWatchedTime: 0,
+                            completed: false,
+                            fileHandle: entry // Store the FileSystemFileHandle for playback
+                        });
+                    }
+                } else if (entry.kind === 'directory') {
+                    // Recursively read subdirectories
+                    const subDirVideos = await readDirectoryContents(entry, courseId, fullPath);
+                    videos.push(...subDirVideos);
+                }
+            }
+            return videos;
+        }
+
+        /**
+         * Gets the duration of a video file.
+         * @param {File} file - The video file object.
+         * @returns {Promise<number>} A promise that resolves with the duration in seconds.
+         */
+        function getVideoDuration(file) {
+            return new Promise((resolve, reject) => {
+                const tempVideo = document.createElement('video');
+                tempVideo.preload = 'metadata';
+                tempVideo.onloadedmetadata = () => {
+                    resolve(tempVideo.duration);
+                    URL.revokeObjectURL(tempVideo.src);
+                };
+                tempVideo.onerror = (e) => {
+                    console.error('Error loading video metadata:', e);
+                    reject(e);
+                };
+                tempVideo.src = URL.createObjectURL(file);
+            });
+        }
+
+
+        // --- UI Rendering Functions ---
+
+        /**
+         * Renders the list of courses in the sidebar.
+         */
+        async function renderCourseList() {
+            courseListDiv.innerHTML = '';
+            const courses = await getAllCourses();
+
+            if (courses.length === 0) {
+                courseListDiv.innerHTML = '<p class="text-sm light-text-color p-4">No courses added yet. Click "Add Course" to select your course folders.</p>';
+                return;
+            }
+
+            for (const course of courses) {
+                const courseVideos = await getVideosByCourseId(course.id);
+                const completedVideos = courseVideos.filter(v => v.completed).length;
+                const totalVideos = courseVideos.length;
+                const progress = totalVideos > 0 ? (completedVideos / totalVideos) * 100 : 0;
+
+                const courseItem = document.createElement('div');
+                courseItem.className = `course-item rounded-lg shadow-md ${currentCourseId === course.id ? 'active' : ''}`;
+                courseItem.dataset.courseId = course.id;
+
+                courseItem.innerHTML = `
+                    <div class="course-name">${course.name}</div>
+                    <div class="course-progress-bar">
+                        <div class="progress-fill" style="width: ${progress.toFixed(0)}%;"></div>
+                    </div>
+                    <div class="course-progress-text">${progress.toFixed(0)}% Complete</div>
+                `;
+                courseItem.addEventListener('click', () => selectCourse(course.id));
+                courseListDiv.appendChild(courseItem);
+            }
+        }
+
+        /**
+         * Converts seconds to a formatted duration string (e.g., "1hr 2min 30s").
+         * Omits hours/minutes/seconds if they are zero.
+         * @param {number} totalSeconds - The total duration in seconds.
+         * @returns {string} Formatted duration string.
+         */
+        function formatReadableDuration(totalSeconds) {
+            if (isNaN(totalSeconds) || totalSeconds < 0) {
+                return '0s';
+            }
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+
+            let parts = [];
+            if (hours > 0) {
+                parts.push(`${hours}hr`);
+            }
+            if (minutes > 0) {
+                parts.push(`${minutes}min`);
+            }
+            if (seconds > 0 || totalSeconds === 0) { // Include seconds if non-zero, or if total is zero
+                parts.push(`${seconds}s`);
+            }
+
+            return parts.join(' ') || '0s'; // Fallback for empty strings if all are zero
+        }
+
+
+        /**
+         * Selects a course and displays its details.
+         * @param {string} courseId - The ID of the course to select.
+         */
+        async function selectCourse(courseId) {
+            if (currentVideoPath) {
+                // Save current video progress before switching courses/videos
+                await saveVideoProgress();
+            }
+
+            currentCourseId = courseId;
+            currentVideoPath = null; // Reset current video
+            currentVideoFileHandle = null; // Reset current video file handle
+            noteContentInput.value = ''; // Clear notes input
+
+            // Update active state in sidebar
+            document.querySelectorAll('.course-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.courseId === courseId) {
+                    item.classList.add('active');
+                }
+            });
+
+            welcomeMessageDiv.style.display = 'none';
+            courseDetailsDiv.style.display = 'flex'; // Use flex for the main content's two columns
+
+            const courses = await getAllCourses();
+            const selectedCourse = courses.find(c => c.id === courseId);
+
+            if (!selectedCourse) {
+                showMessageBox('Error', 'Selected course not found.');
+                return;
+            }
+
+            currentCourseTitle.textContent = selectedCourse.name;
+            sectionsListDiv.innerHTML = ''; // Sections List is now in rightContentPanel
+            notesListDiv.innerHTML = '<p class="text-sm light-text-color">No notes yet for this video. Start typing above!</p>';
+            videoPlayer.pause();
+            videoPlayer.removeAttribute('src'); // Clear current video
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl); // Clean up previous object URL
+                objectUrl = null;
+            }
+
+            // Re-request permission for the stored directory handle
+            let courseHandle = selectedCourse.handle;
+            try {
+                // Verify permission for the handle. If it's not granted, prompt the user.
+                // This is crucial for persistence.
+                const permissionStatus = await courseHandle.queryPermission({ mode: 'read' });
+                if (permissionStatus === 'denied') {
+                    throw new Error('Permission denied for this folder.');
+                }
+                if (permissionStatus === 'prompt') {
+                    const reqPermissionStatus = await courseHandle.requestPermission({ mode: 'read' });
+                    if (reqPermissionStatus === 'denied') {
+                        throw new Error('Permission not granted by user.');
+                    }
+                }
+            } catch (error) {
+                console.error("Could not get persistent access to folder:", error);
+                showMessageBox('Access Denied', `Failed to get access to the folder for "${selectedCourse.name}". Please remove and re-add the course.`);
+                // Reset UI to welcome state if access fails
+                welcomeMessageDiv.style.display = 'block';
+                courseDetailsDiv.style.display = 'none';
+                currentCourseId = null;
+                return;
+            }
+
+
+            const courseVideos = await getVideosByCourseId(courseId);
+
+            // Group videos by section
+            const sections = {};
+            // Let's adjust this calculation to correctly sum watched duration per section
+            courseVideos.forEach(video => {
+                if (!sections[video.section]) {
+                    sections[video.section] = {
+                        videos: [],
+                        totalDuration: 0,
+                        watchedDuration: 0, // Initialize watched duration for the section
+                        completedCount: 0
+                    };
+                }
+                sections[video.section].videos.push(video);
+                sections[video.section].totalDuration += video.duration;
+                sections[video.section].watchedDuration += video.lastWatchedTime; // Sum last watched time
+                if (video.completed) {
+                    sections[video.section].completedCount++;
+                }
+            });
+
+
+            // Sort sections alphabetically (or you could custom sort)
+            const sortedSectionNames = Object.keys(sections).sort((a, b) => {
+                // Place "Main Section" first if it exists
+                if (a === 'Main Section') return -1;
+                if (b === 'Main Section') return 1;
+                return a.localeCompare(b);
+            });
+
+            for (const sectionName of sortedSectionNames) {
+                const sectionData = sections[sectionName];
+                const sectionVideos = sectionData.videos.sort((a, b) => a.name.localeCompare(b.name)); // Sort videos
+                const sectionItem = document.createElement('div');
+                sectionItem.className = 'section-item'; /* Removed rounded-lg as requested */
+
+                const sectionHeader = document.createElement('div');
+                sectionHeader.className = 'section-header';
+                sectionHeader.innerHTML = `
+                    <div class="section-title-wrapper">
+                        <i class="fas fa-folder folder-toggle-icon"></i>
+                        <span>${sectionName}</span>
+                    </div>
+                    <div class="section-info">
+                        ${sectionData.completedCount}/${sectionVideos.length} | ${formatReadableDuration(sectionData.watchedDuration)} / ${formatReadableDuration(sectionData.totalDuration)}
+                    </div>
+                `;
+                sectionItem.appendChild(sectionHeader);
+
+                const videoListDiv = document.createElement('div');
+                videoListDiv.className = 'video-list expanded'; // Start expanded by default for simplicity
+                sectionItem.appendChild(videoListDiv);
+
+                sectionHeader.addEventListener('click', () => {
+                    videoListDiv.classList.toggle('expanded');
+                    sectionHeader.classList.toggle('collapsed');
+                    // Toggle the folder icon's rotation
+                    const folderIcon = sectionHeader.querySelector('.folder-toggle-icon');
+                    if (folderIcon.classList.contains('fa-folder-open')) {
+                        folderIcon.classList.remove('fa-folder-open');
+                        folderIcon.classList.add('fa-folder');
+                    } else {
+                        folderIcon.classList.remove('fa-folder');
+                        folderIcon.classList.add('fa-folder-open');
+                    }
+                });
+
+
+                // Set initial folder icon state
+                const initialFolderIcon = sectionHeader.querySelector('.folder-toggle-icon');
+                if (videoListDiv.classList.contains('expanded')) {
+                    initialFolderIcon.classList.add('fa-folder-open');
+                } else {
+                    initialFolderIcon.classList.add('fa-folder');
+                }
+
+
+                for (const video of sectionVideos) {
+                    const videoItem = document.createElement('div');
+                    videoItem.className = `video-item ${video.path === currentVideoPath ? 'playing' : ''}`;
+                    videoItem.dataset.videoPath = video.path;
+
+                    const formattedDuration = formatDuration(video.duration);
+
+                    videoItem.innerHTML = `
+                        <div class="video-checkbox-container">
+                            <input type="checkbox" class="video-checkbox" ${video.completed ? 'checked' : ''}>
+                        </div>
+                        <div class="video-details">
+                            <span class="video-title">${video.name}</span>
+                            <div class="video-playback-info">
+                                <i class="fas fa-play-circle video-icon"></i>
+                                <span class="video-duration">${formattedDuration}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    videoItem.querySelector('.video-details').addEventListener('click', async () => {
+                        await loadVideo(video);
+                    });
+
+                    videoItem.querySelector('.video-checkbox').addEventListener('change', async (e) => {
+                        video.completed = e.target.checked;
+                        await putVideo(video);
+                        await renderCourseList(); // Update course progress in sidebar
+                    });
+
+                    videoListDiv.appendChild(videoItem);
+                }
+                sectionsListDiv.appendChild(sectionItem); // Append to sectionsListDiv in right panel
+            }
+
+            // If there's a video saved as last played for this course, load it
+            const lastPlayedVideo = courseVideos.find(v => v.path === localStorage.getItem(`lastPlayedVideo-${courseId}`));
+            if (lastPlayedVideo) {
+                await loadVideo(lastPlayedVideo);
+            } else if (courseVideos.length > 0) {
+                // Otherwise, load the first video in the first section
+                const firstVideoInCourse = courseVideos[0];
+                await loadVideo(firstVideoInCourse);
+            }
+        }
+
+        /**
+         * Loads a video into the player and updates UI.
+         * @param {object} videoData - The video object from IndexedDB.
+         */
+        async function loadVideo(videoData) {
+            // Save progress of previously playing video
+            if (currentVideoPath && currentVideoPath !== videoData.path) {
+                await saveVideoProgress();
+            }
+
+            // Clean up previous object URL if any
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+
+            // Find the original FileSystemFileHandle from the stored course handle
+            const courses = await getAllCourses();
+            const currentCourse = courses.find(c => c.id === currentCourseId);
+            if (!currentCourse || !currentCourse.handle) {
+                showMessageBox('Error', 'Course directory handle not found. Please re-add the course.');
+                return;
+            }
+
+            // Helper to recursively find file handle
+            async function findFileHandle(directoryHandle, pathParts) {
+                let currentHandle = directoryHandle;
+                for (let i = 0; i < pathParts.length; i++) {
+                    const name = pathParts[i];
+                    try {
+                        if (i === pathParts.length - 1) { // It's the file
+                            return await currentHandle.getFileHandle(name);
+                        } else { // It's a directory
+                            currentHandle = await currentHandle.getDirectoryHandle(name);
+                        }
+                    } catch (e) {
+                        console.error(`Could not get handle for ${name} in path: ${pathParts.slice(0, i + 1).join('/')}`, e);
+                        return null;
+                    }
+                }
+                return null;
+            }
+
+            const pathParts = videoData.path.split('/').filter(p => p); // Split by / and remove empty strings
+            const fileHandle = await findFileHandle(currentCourse.handle, pathParts);
+
+            if (!fileHandle) {
+                showMessageBox('File Not Found', `Could not access video file: ${videoData.name}. It might have been moved or deleted.`);
+                videoPlayer.removeAttribute('src');
+                videoPlayer.load(); // Reload player to clear
+                currentVideoPath = null;
+                currentVideoFileHandle = null;
+                return;
+            }
+
+            currentVideoPath = videoData.path;
+            currentVideoFileHandle = fileHandle;
+
+            // Highlight current video in UI
+            document.querySelectorAll('.video-item').forEach(item => {
+                item.classList.remove('playing');
+                if (item.dataset.videoPath === videoData.path) {
+                    item.classList.add('playing');
+                }
+            });
+
+            videoPlayerLoader.style.display = 'block'; // Show loader
+
+            try {
+                const file = await fileHandle.getFile();
+                objectUrl = URL.createObjectURL(file); // Create object URL
+                videoPlayer.src = objectUrl;
+                videoPlayer.load(); // Load the video
+
+                videoPlayer.onloadedmetadata = () => {
+                    videoPlayerLoader.style.display = 'none'; // Hide loader once metadata is loaded
+                    if (videoData.lastWatchedTime > 0) {
+                        videoPlayer.currentTime = videoData.lastWatchedTime;
+                    }
+                    videoPlayer.play();
+                };
+
+                videoPlayer.onerror = (e) => {
+                    console.error('Video player error:', e);
+                    videoPlayerLoader.style.display = 'none'; // Hide loader on error
+                    showMessageBox('Video Playback Error', `Could not play "${videoData.name}". The file might be corrupted or the format is not supported by your browser.`);
+                };
+
+            } catch (error) {
+                console.error('Error loading video file:', error);
+                videoPlayerLoader.style.display = 'none'; // Hide loader on error
+                showMessageBox('File Access Error', `Failed to load "${videoData.name}". Ensure permissions are granted.`);
+            }
+
+            // Load notes for the new video
+            await renderNotes(videoData.path);
+            localStorage.setItem(`lastPlayedVideo-${currentCourseId}`, videoData.path); // Store last played video for the course
+        }
+
+        /**
+         * Saves the current progress (last watched time and completion status) of the playing video.
+         */
+        async function saveVideoProgress() {
+            if (!currentVideoPath) return;
+
+            const videoData = await getVideoByPath(currentVideoPath);
+            if (videoData) {
+                videoData.lastWatchedTime = videoPlayer.currentTime;
+                // Mark as completed if watched almost till the end
+                if (videoPlayer.duration && videoPlayer.currentTime > videoPlayer.duration - 5) { // 5 seconds from end
+                    videoData.completed = true;
+                }
+                await putVideo(videoData);
+                await renderCourseList(); // Update sidebar progress
+            }
+        }
+
+        /**
+         * Renders notes for the given video path.
+         * @param {string} videoPath - The path of the video.
+         */
+        async function renderNotes(videoPath) {
+            notesListDiv.innerHTML = '';
+            const notes = await getNotesByVideoId(videoPath);
+
+            if (notes.length === 0) {
+                notesListDiv.innerHTML = '<p class="text-sm light-text-color">No notes yet for this video. Start typing above!</p>';
+                return;
+            }
+
+            // Sort notes by timestamp
+            notes.sort((a, b) => a.timestamp - b.timestamp);
+
+            notes.forEach(note => {
+                const noteItem = document.createElement('div');
+                noteItem.className = 'note-item rounded-lg';
+                noteItem.dataset.noteId = note.id;
+
+                const formattedTimestamp = formatDuration(note.timestamp);
+                const renderedContent = marked.parse(note.content); // Render Markdown
+
+                noteItem.innerHTML = `
+                    <div class="note-item-header">
+                        <span class="note-timestamp" data-timestamp="${note.timestamp}">${formattedTimestamp}</span>
+                        <div class="note-actions">
+                            <button class="edit-note-btn"><i class="fas fa-edit"></i></button>
+                            <button class="delete-note-btn"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="note-content">${renderedContent}</div>
+                `;
+
+                noteItem.querySelector('.note-timestamp').addEventListener('click', (e) => {
+                    const timestamp = parseFloat(e.target.dataset.timestamp);
+                    if (!isNaN(timestamp) && videoPlayer.src) {
+                        videoPlayer.currentTime = timestamp;
+                        videoPlayer.play();
+                    }
+                });
+
+                noteItem.querySelector('.edit-note-btn').addEventListener('click', () => {
+                    noteContentInput.value = note.content;
+                    // For simplicity, editing overwrites, could add specific edit logic
+                    deleteNote(note.id); // Delete old note, then user can save new one
+                    renderNotes(videoPath); // Refresh notes list
+                    showMessageBox('Note Edit', 'Content loaded into editor. Make changes and click "Save Note". Original note deleted.');
+                });
+
+                noteItem.querySelector('.delete-note-btn').addEventListener('click', async () => {
+                    await deleteNote(note.id);
+                    renderNotes(videoPath); // Refresh notes list
+                });
+
+                notesListDiv.appendChild(noteItem);
+            });
+        }
+
+        /**
+         * Adds a timestamp to the note input.
+         */
+        function addTimestampToNote() {
+            if (!currentVideoPath) {
+                showMessageBox('No Video', 'Please load a video first to add a timestamp.');
+                return;
+            }
+            const currentTime = videoPlayer.currentTime;
+            const formattedTime = formatDuration(currentTime);
+            const timestampLink = `[${formattedTime}](#${Math.floor(currentTime)})`; // Markdown link for timestamp
+            const start = noteContentInput.selectionStart;
+            const end = noteContentInput.selectionEnd;
+            noteContentInput.value = noteContentInput.value.substring(0, start) + timestampLink + noteContentInput.value.substring(end);
+            noteContentInput.focus();
+            noteContentInput.setSelectionRange(start + timestampLink.length, start + timestampLink.length);
+        }
+
+        // --- Helper Functions ---
+
+        /**
+         * Formats duration in seconds to HH:MM:SS or MM:SS.
+         * @param {number} seconds - The duration in seconds.
+         * @returns {string} Formatted duration string.
+         */
+        function formatDuration(seconds) {
+            if (isNaN(seconds) || seconds < 0) {
+                return '00:00';
+            }
+            const date = new Date(null);
+            date.setSeconds(seconds);
+            const hours = date.getUTCHours();
+            const minutes = date.getUTCMinutes();
+            const secs = date.getUTCSeconds().toString().padStart(2, '0');
+
+            if (hours > 0) {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs}`;
+            }
+            return `${minutes.toString().padStart(2, '0')}:${secs}`;
+        }
+
+        /**
+         * Displays a custom message box.
+         * @param {string} title - The title of the message box.
+         * @param {string} content - The content message.
+         * @param {boolean} showLoader - If true, displays a loader icon.
+         */
+        function showMessageBox(title, content, showLoader = false) {
+            let messageBoxOverlay = document.querySelector('.message-box-overlay');
+            if (!messageBoxOverlay) {
+                messageBoxOverlay = messageBoxTemplate.content.cloneNode(true).children[0];
+                document.body.appendChild(messageBoxOverlay);
+            }
+
+            const messageBoxTitle = messageBoxOverlay.querySelector('#messageBoxTitle');
+            const messageBoxContent = messageBoxOverlay.querySelector('#messageBoxContent');
+            const messageBoxOkBtn = messageBoxOverlay.querySelector('#messageBoxOkBtn');
+
+            messageBoxTitle.textContent = title;
+            messageBoxContent.innerHTML = content; // Use innerHTML for richer content
+            messageBoxOkBtn.style.display = showLoader ? 'none' : 'block'; // Hide OK button if loader is shown
+
+            // Add a loader if requested
+            let loader = messageBoxOverlay.querySelector('.message-box .loader');
+            if (showLoader) {
+                if (!loader) {
+                    loader = document.createElement('div');
+                    loader.className = 'loader';
+                    messageBoxOverlay.querySelector('.message-box').prepend(loader); // Add loader before title
+                }
+                loader.style.display = 'block';
+            } else {
+                if (loader) {
+                    loader.remove();
+                }
+            }
+
+            messageBoxOkBtn.onclick = () => hideMessageBox();
+            messageBoxOverlay.style.display = 'flex'; // Ensure it's visible
+        }
+
+        /**
+         * Hides the custom message box.
+         */
+        function hideMessageBox() {
+            const messageBoxOverlay = document.querySelector('.message-box-overlay');
+            if (messageBoxOverlay) {
+                messageBoxOverlay.style.display = 'none';
+                // Clean up loader if it exists
+                const loader = messageBoxOverlay.querySelector('.message-box .loader');
+                if (loader) {
+                    loader.remove();
+                }
+            }
+        }
+
+        // --- Sidebar Control Functions ---
+
+        /**
+         * Toggles the sidebar's visibility.
+         * @param {boolean} [forceState] - Optional. If true, forces sidebar to expand. If false, forces collapse.
+         */
+        function toggleSidebar(forceState) {
+            // If in mobile view (overlay mode)
+            if (isMobileView) {
+                if (forceState === true) { // Force expand
+                    sidebar.classList.add('active');
+                    sidebar.classList.remove('collapsed');
+                    sidebarOverlayBackdrop.style.display = 'block';
+                    isSidebarCollapsed = false;
+                } else if (forceState === false) { // Force collapse
+                    sidebar.classList.remove('active');
+                    sidebar.classList.add('collapsed');
+                    sidebarOverlayBackdrop.style.display = 'none';
+                    isSidebarCollapsed = true;
+                } else { // Toggle
+                    isSidebarCollapsed = !sidebar.classList.contains('active');
+                    sidebar.classList.toggle('active');
+                    sidebar.classList.toggle('collapsed');
+                    sidebarOverlayBackdrop.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+                }
+                sidebarToggleBtn.querySelector('i').className = sidebar.classList.contains('active') ? 'fas fa-times' : 'fas fa-bars'; // 'X' for open, 'Bars' for closed
+                // Ensure resizer is hidden in mobile view
+                sidebarResizer.style.display = 'none';
+                sidebarReopenBtn.classList.remove('show'); // Hide floating button too
+            } else {
+                // Desktop view (standard collapse/expand)
+                if (forceState === true) { // Force expand
+                    sidebar.classList.remove('collapsed');
+                    sidebar.style.width = localStorage.getItem('sidebarWidth') || getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-desktop');
+                    isSidebarCollapsed = false;
+                } else if (forceState === false) { // Force collapse
+                    sidebar.classList.add('collapsed');
+                    sidebar.style.width = '0px';
+                    isSidebarCollapsed = true;
+                } else { // Toggle
+                    isSidebarCollapsed = !sidebar.classList.contains('collapsed');
+                    sidebar.classList.toggle('collapsed');
+                    sidebar.style.width = isSidebarCollapsed ? '0px' : (localStorage.getItem('sidebarWidth') || getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-desktop'));
+                }
+
+                // Update icon for main toggle button
+                sidebarToggleBtn.querySelector('i').className = isSidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+
+                // Show/hide floating re-open button based on actual width
+                if (isSidebarCollapsed) {
+                    sidebarReopenBtn.classList.add('show');
+                    sidebarResizer.style.display = 'none'; // Hide resizer when fully collapsed
+                } else {
+                    sidebarReopenBtn.classList.remove('show');
+                    sidebarResizer.style.display = 'block'; // Show resizer when expanded
+                }
+            }
+            localStorage.setItem('isSidebarCollapsed', isSidebarCollapsed);
+            sidebarToggleBtn.setAttribute('aria-expanded', !isSidebarCollapsed);
+        }
+
+        /**
+         * Sets up the sidebar resizing functionality.
+         */
+        function setupResizer() {
+            // Vertical Sidebar Resizer (Courses Panel)
+            sidebarResizer.addEventListener('mousedown', (e) => {
+                if (isMobileView) return; // Disable resizer in mobile view
+                isResizingSidebar = true;
+                initialSidebarWidth = sidebar.offsetWidth;
+                initialSidebarMouseX = e.clientX;
+                document.body.style.cursor = 'ew-resize';
+                sidebar.style.transition = 'none'; // Disable transition during resize
+                rightContentPanel.style.transition = 'none'; // Disable transition during resize
+            });
+
+            // Vertical Content Resizer (Video/Notes vs Right Content)
+            verticalContentResizer.addEventListener('mousedown', (e) => {
+                if (isMobileView) return; // Disable resizer in mobile view
+                isResizingVerticalContent = true;
+                initialRightContentWidth = rightContentPanel.offsetWidth;
+                initialVerticalContentMouseX = e.clientX;
+                document.body.style.cursor = 'ew-resize';
+                rightContentPanel.style.transition = 'none'; // Disable transition during resize
+                videoNotesSection.style.transition = 'none'; // Disable transition during resize
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizingSidebar && !isResizingVerticalContent) return;
+
+                if (isResizingSidebar) {
+                    let newWidth = initialSidebarWidth + (e.clientX - initialSidebarMouseX);
+                    // Allow resizing down to 0px, no minimum snap before disappearing
+                    newWidth = Math.max(0, newWidth);
+
+                    sidebar.style.width = `${newWidth}px`;
+
+                    // Update collapsed state and button visibility based on actual current width
+                    if (newWidth === 0) {
+                        isSidebarCollapsed = true;
+                        sidebar.classList.add('collapsed');
+                        sidebarReopenBtn.classList.add('show');
+                        sidebarResizer.style.display = 'none'; // Hide resizer when fully collapsed
+                    } else {
+                        isSidebarCollapsed = false;
+                        sidebar.classList.remove('collapsed');
+                        sidebarReopenBtn.classList.remove('show');
+                        sidebarResizer.style.display = 'block'; // Show resizer if not fully collapsed
+                    }
+
+                    localStorage.setItem('sidebarWidth', sidebar.style.width);
+                    localStorage.setItem('isSidebarCollapsed', isSidebarCollapsed);
+                    sidebarToggleBtn.querySelector('i').className = isSidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+                    sidebarToggleBtn.setAttribute('aria-expanded', !isSidebarCollapsed);
+                } else if (isResizingVerticalContent) {
+                    // Calculate new width for right panel
+                    const containerWidth = mainContentWrapper.offsetWidth;
+                    let newRightPanelWidth = initialRightContentWidth - (e.clientX - initialVerticalContentMouseX);
+
+                    // Ensure minimum width for both panels
+                    newRightPanelWidth = Math.max(MIN_RIGHT_CONTENT_WIDTH_DRAG, newRightPanelWidth);
+                    // Prevent right panel from growing too large and pushing video area to 0
+                    const maxRightPanelWidth = containerWidth - MIN_SIDEBAR_WIDTH_DRAG; // Use a min width for video area
+                    newRightPanelWidth = Math.min(maxRightPanelWidth, newRightPanelWidth);
+
+                    rightContentPanel.style.width = `${newRightPanelWidth}px`;
+                    localStorage.setItem('rightContentWidth', rightContentPanel.style.width);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizingSidebar) {
+                    isResizingSidebar = false;
+                    document.body.style.cursor = '';
+                    sidebar.style.transition = ''; // Re-enable transition
+                    rightContentPanel.style.transition = ''; // Re-enable transition for right panel
+
+                    // After resize, if width is not 0, ensure it's at least MIN_SIDEBAR_WIDTH_DRAG for usability
+                    if (sidebar.offsetWidth > 0 && sidebar.offsetWidth < MIN_SIDEBAR_WIDTH_DRAG) {
+                        sidebar.style.width = `${MIN_SIDEBAR_WIDTH_DRAG}px`;
+                        localStorage.setItem('sidebarWidth', `${MIN_SIDEBAR_WIDTH_DRAG}px`);
+                    }
+
+                    // Final sync of state based on current width
+                    if (sidebar.offsetWidth === 0) {
+                        isSidebarCollapsed = true;
+                        sidebar.classList.add('collapsed');
+                        sidebarReopenBtn.classList.add('show');
+                        sidebarResizer.style.display = 'none';
+                    } else {
+                        isSidebarCollapsed = false;
+                        sidebar.classList.remove('collapsed');
+                        sidebarReopenBtn.classList.remove('show');
+                        sidebarResizer.style.display = 'block';
+                    }
+                    localStorage.setItem('isSidebarCollapsed', isSidebarCollapsed);
+                    sidebarToggleBtn.querySelector('i').className = isSidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+                    sidebarToggleBtn.setAttribute('aria-expanded', !isSidebarCollapsed);
+                } else if (isResizingVerticalContent) {
+                    isResizingVerticalContent = false;
+                    document.body.style.cursor = '';
+                    rightContentPanel.style.transition = ''; // Re-enable transition
+                    videoNotesSection.style.transition = ''; // Re-enable transition
+                }
+            });
+
+            sidebarReopenBtn.addEventListener('click', () => {
+                toggleSidebar(true); // Force open
+                sidebarReopenBtn.classList.remove('show');
+            });
+        }
+
+        /**
+         * Checks screen size and adjusts sidebar mode (desktop vs. mobile overlay).
+         */
+        function checkScreenSizeAndSidebarMode() {
+            const wasMobileView = isMobileView;
+            isMobileView = window.innerWidth <= MEDIA_QUERY_BREAKPOINT;
+
+            if (isMobileView && !wasMobileView) {
+                // Switched to mobile view
+                sidebar.classList.add('collapsed'); // Initially hidden
+                sidebar.classList.remove('active');
+                sidebar.style.width = ''; // Remove inline width to allow CSS fixed width
+                sidebarResizer.style.display = 'none'; // Hide resizer
+                sidebarReopenBtn.classList.remove('show'); // Hide floating button
+                sidebarToggleBtn.querySelector('i').className = 'fas fa-bars'; // Hamburger icon
+                sidebarOverlayBackdrop.style.display = 'none';
+                localStorage.setItem('isSidebarCollapsed', true); // On mobile, default to collapsed
+                isSidebarCollapsed = true;
+
+                // Adjust main content for mobile
+                mainContentWrapper.style.flexDirection = 'column'; // Stack video/notes and right content
+                verticalContentResizer.style.display = 'none'; // Hide vertical content resizer
+            } else if (!isMobileView && wasMobileView) {
+                // Switched to desktop view
+                const savedSidebarWidth = localStorage.getItem('sidebarWidth');
+                const savedSidebarCollapsedState = localStorage.getItem('isSidebarCollapsed') === 'true';
+                const savedRightContentWidth = localStorage.getItem('rightContentWidth');
+
+                sidebar.classList.remove('active'); // Remove overlay class
+                sidebarOverlayBackdrop.style.display = 'none';
+
+                if (savedSidebarCollapsedState) {
+                    sidebar.classList.add('collapsed');
+                    sidebar.style.width = '0px';
+                    sidebarToggleBtn.querySelector('i').className = 'fas fa-chevron-right';
+                    sidebarResizer.style.display = 'none';
+                    sidebarReopenBtn.classList.add('show'); // Show floating if hidden
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    sidebar.style.width = savedSidebarWidth || getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-desktop');
+                    sidebarToggleBtn.querySelector('i').className = 'fas fa-chevron-left';
+                    sidebarResizer.style.display = 'block';
+                    sidebarReopenBtn.classList.remove('show');
+                }
+                isSidebarCollapsed = savedSidebarCollapsedState; // Sync state
+
+                // Adjust main content for desktop
+                mainContentWrapper.style.flexDirection = 'row'; // Side-by-side
+                verticalContentResizer.style.display = 'block'; // Show vertical content resizer
+                rightContentPanel.style.width = savedRightContentWidth || getComputedStyle(document.documentElement).getPropertyValue('--right-content-width-desktop');
+
+            } else {
+                // If already in mobile, ensure current state is applied
+                if (isMobileView) {
+                    sidebarToggleBtn.querySelector('i').className = sidebar.classList.contains('active') ? 'fas fa-times' : 'fas fa-bars';
+                }
+            }
+            sidebarToggleBtn.setAttribute('aria-expanded', !isSidebarCollapsed);
+        }
+
+        // --- Gemini API Call Function ---
+
+        /**
+         * Calls the Gemini API with a given prompt and optional response schema.
+         * @param {string} promptText - The text prompt for the LLM.
+         * @param {object} [responseSchema] - Optional JSON schema for structured output.
+         * @returns {Promise<any>} The parsed JSON response or raw text.
+         */
+        async function callGeminiAPI(promptText, responseSchema = null) {
+            const apiKey = ""; // Canvas will automatically provide the API key at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: promptText }] });
+
+            const payload = { contents: chatHistory };
+
+            if (responseSchema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: responseSchema
+                };
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Gemini API error response:', errorData);
+                    throw new Error(`Gemini API request failed: ${response.status} ${response.statusText} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+
+                    const text = result.candidates[0].content.parts[0].text;
+                    if (responseSchema) {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error("Failed to parse JSON response from Gemini:", e, "Raw text:", text);
+                            throw new Error("Received invalid JSON from Gemini API.");
+                        }
+                    } else {
+                        return text;
+                    }
+                } else {
+                    console.warn("Gemini API response structure unexpected:", result);
+                    throw new Error("No content found in Gemini API response.");
+                }
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                throw error; // Re-throw to be caught by the calling function
+            }
+        }
+
+
+        // --- New LLM Features ---
+
+        /**
+         * Summarizes the current video's content based on notes or title/course name.
+         */
+        async function summarizeVideoContent() {
+            if (!currentVideoPath) {
+                showMessageBox('No Video Selected', 'Please select a video to summarize.');
+                return;
+            }
+
+            showMessageBox('Summarizing Video...', '<div class="loader"></div><p>Generating summary using AI. This may take a moment...</p>', true);
+
+            try {
+                const notes = await getNotesByVideoId(currentVideoPath);
+                const currentVideo = await getVideoByPath(currentVideoPath);
+                const currentCourse = await getAllCourses().then(courses => courses.find(c => c.id === currentCourseId));
+
+                let prompt;
+                let summaryTitle = `Summary for "${currentVideo.name}"`;
+
+                if (notes && notes.length > 0) {
+                    const allNotesContent = notes.map(n => n.content).join('\n\n');
+                    prompt = `Summarize the following notes from a video titled "${currentVideo.name}" (from course "${currentCourse.name}") into key takeaways:\n\n${allNotesContent}`;
+                } else {
+                    prompt = `Provide key takeaways and a brief overview for a video titled "${currentVideo.name}" from the course "${currentCourse.name}".`;
+                }
+
+                const summary = await callGeminiAPI(prompt);
+                showMessageBox(summaryTitle, `<div style="text-align: left; max-height: 300px; overflow-y: auto; padding-right: 10px;">${marked.parse(summary)}</div>`, false); // Render summary as Markdown
+            } catch (error) {
+                console.error('Error summarizing video:', error);
+                showMessageBox('Error Summarizing', `Failed to generate summary: ${error.message}. Please try again.`);
+            }
+        }
+
+        /**
+         * Generates study questions for the current video.
+         */
+        async function generateStudyQuestions() {
+            if (!currentVideoPath) {
+                showMessageBox('No Video Selected', 'Please select a video to generate questions for.');
+                return;
+            }
+
+            showMessageBox('Generating Questions...', '<div class="loader"></div><p>Creating study questions using AI. This may take a moment...</p>', true);
+
+            try {
+                const currentVideo = await getVideoByPath(currentVideoPath);
+                const currentCourse = await getAllCourses().then(courses => courses.find(c => c.id === currentCourseId));
+
+                const prompt = `Generate 3 multiple-choice study questions for a video titled "${currentVideo.name}" from the course "${currentCourse.name}". Each question should have 3 options, with one correct answer. Provide the output as a JSON array of objects, where each object has 'question' (string), 'options' (an array of 3 strings), and 'answer' (the correct option string). Ensure the questions focus on important concepts related to the video title.`;
+
+                const schema = {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "question": { "type": "STRING" },
+                            "options": {
+                                "type": "ARRAY",
+                                "items": { "type": "STRING" },
+                                "minItems": 3,
+                                "maxItems": 3
+                            },
+                            "answer": { "type": "STRING" }
+                        },
+                        "required": ["question", "options", "answer"]
+                    }
+                };
+
+                const questions = await callGeminiAPI(prompt, schema);
+
+                let questionsHtml = '<div style="text-align: left; max-height: 400px; overflow-y: auto; padding-right: 10px;"><ol>';
+                if (Array.isArray(questions) && questions.length > 0) {
+                    questions.forEach((q, index) => {
+                        questionsHtml += `<li><h4>${q.question}</h4><ul>`;
+                        q.options.forEach((option, i) => {
+                            questionsHtml += `<li>${String.fromCharCode(97 + i)}. ${option}</li>`; // a., b., c.
+                        });
+                        questionsHtml += `</ul><p><strong>Answer:</strong> ${q.answer}</p></li>`;
+                    });
+                    questionsHtml += '</ol></div>';
+                    showMessageBox('Study Questions', questionsHtml, false);
+                } else {
+                    showMessageBox('No Questions Generated', 'AI could not generate study questions for this video. Please try again with a different video or notes, or refine the course/video title.');
+                }
+
+            } catch (error) {
+                console.error('Error generating questions:', error);
+                showMessageBox('Error Generating Questions', `Failed to generate questions: ${error.message}. Please try again.`);
+            }
+        }
+
+
+        // --- Event Listeners ---
+
+        addCourseBtn.addEventListener('click', selectCourseFolder);
+
+        saveNoteBtn.addEventListener('click', async () => {
+            if (!currentVideoPath) {
+                showMessageBox('No Video Selected', 'Please select a video to add notes.');
+                return;
+            }
+            const content = noteContentInput.value.trim();
+            if (content) {
+                const note = {
+                    videoId: currentVideoPath,
+                    timestamp: videoPlayer.currentTime,
+                    content: content,
+                    createdAt: Date.now()
+                };
+                await addNote(note);
+                noteContentInput.value = '';
+                await renderNotes(currentVideoPath);
+            } else {
+                showMessageBox('Empty Note', 'Note content cannot be empty.');
+            }
+        });
+
+        addTimestampBtn.addEventListener('click', addTimestampToNote);
+        summarizeVideoBtn.addEventListener('click', summarizeVideoContent); // New event listener
+        generateQuestionsBtn.addEventListener('click', generateStudyQuestions); // New event listener
+
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            // Save progress every 10 seconds (or more frequently if needed)
+            if (Math.floor(videoPlayer.currentTime) % 10 === 0 && videoPlayer.currentTime > 0) {
+                saveVideoProgress();
+            }
+        });
+
+        videoPlayer.addEventListener('ended', async () => {
+            // Mark video as completed when it ends
+            if (currentVideoPath) {
+                const videoData = await getVideoByPath(currentVideoPath);
+                if (videoData) {
+                    videoData.completed = true;
+                    videoData.lastWatchedTime = videoPlayer.duration; // Ensure last watched time is full duration
+                    await putVideo(videoData);
+                    await renderCourseList(); // Update course progress in sidebar
+
+                    // Update checkbox in UI
+                    const checkbox = document.querySelector(`.video-item[data-video-path="${currentVideoPath}"] .video-checkbox`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                }
+            }
+        });
+
+        // Toggle sidebar button click
+        sidebarToggleBtn.addEventListener('click', () => {
+            toggleSidebar();
+        });
+
+        // Hide sidebar overlay when backdrop is clicked (mobile only)
+        sidebarOverlayBackdrop.addEventListener('click', () => {
+            if (isMobileView) {
+                toggleSidebar(false); // Force collapse
+            }
+        });
+
+        // Keyboard shortcut: Ctrl + B (or Cmd + B on Mac) to toggle sidebar
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault(); // Prevent browser's default behavior for Ctrl+B
+                toggleSidebar();
+            }
+        });
+
+        // Fullscreen video detection for sidebar auto-hide
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                document.body.classList.add('fullscreen-video');
+            } else {
+                document.body.classList.remove('fullscreen-video');
+            }
+        });
+
+
+        // Light/Dark Mode Toggle
+        modeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            modeToggle.querySelector('i').className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+        });
+
+        // Debounce function for resize event
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
+        const debouncedCheckScreenSize = debounce(checkScreenSizeAndSidebarMode, 200);
+        window.addEventListener('resize', debouncedCheckScreenSize);
+
+
+        // --- Initialization ---
+
+        window.onload = async () => {
+            // Apply saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                modeToggle.querySelector('i').className = 'fas fa-sun';
+            } else {
+                document.body.classList.remove('dark-mode');
+                modeToggle.querySelector('i').className = 'fas fa-moon';
+            }
+
+            await initDb();
+            await renderCourseList();
+
+            // Initialize sidebar state based on localStorage and screen size
+            const savedSidebarState = localStorage.getItem('isSidebarCollapsed');
+            const savedSidebarWidth = localStorage.getItem('sidebarWidth');
+            const savedRightContentWidth = localStorage.getItem('rightContentWidth');
+
+            checkScreenSizeAndSidebarMode(); // Initial check for responsive layout
+
+            if (!isMobileView) { // Only apply saved width/collapse on desktop
+                if (savedSidebarState === 'true') {
+                    if (savedSidebarWidth === '0px') {
+                         toggleSidebar(false); // Force collapse to 0
+                    } else {
+                        sidebar.style.width = savedSidebarWidth || getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-desktop');
+                        toggleSidebar(true); // Force expand
+                    }
+                } else if (savedSidebarWidth) {
+                    sidebar.style.width = savedSidebarWidth;
+                    toggleSidebar(true); // Force expand based on saved width
+                } else {
+                    toggleSidebar(true); // Default to expanded
+                }
+                // Apply saved right content panel width
+                rightContentPanel.style.width = savedRightContentWidth || getComputedStyle(document.documentElement).getPropertyValue('--right-content-width-desktop');
+            } else {
+                // On mobile, always start hidden by default from CSS, then use toggle to open
+                toggleSidebar(false); // Force hidden for mobile initial load
+                sidebarReopenBtn.classList.remove('show'); // Ensure it's hidden on mobile
+            }
+
+            setupResizer();
+        };
+
+    </script>
 </body>
-  
 </html>
